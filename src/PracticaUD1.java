@@ -6,7 +6,7 @@ import java.util.List;
 
 public class PracticaUD1 {
     // throws IOException porque start() puede fallar si no se puede crear el proceso
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         // Si el primer argumento es "encargado", este proceso actua como hijo.
         // Se comprueba primero args.length > 0 para que el jefe (que no recibe
         // argumentos) no intente leer args[0] y lance ArrayIndexOutOfBoundsException
@@ -28,7 +28,11 @@ public class PracticaUD1 {
         Process encargado = prepararEncargado("Seccion-1").inheritIO().start();
         System.out.println("ENCARGADO creado: " + encargado.pid());
         // Recien lanzado deberia seguir vivo, por eso sale true
-        System.out.println("¿Esta vivo?: " + encargado.isAlive());
+        System.out.println("¿Está el encargado?: " + encargado.isAlive());
+        // Con esto espera el hilo main del padre hasta que el proceso hijo termina
+        int codigo = encargado.waitFor();
+        System.out.println("Encargado se ha ido, código: " + codigo);
+        System.out.println("¿Sigue el encargado aquí?: " + encargado.isAlive());
     }
 
     // Lo que hace el proceso hijo cuando se ejecuta como encargado
