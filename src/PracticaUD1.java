@@ -39,6 +39,15 @@ public class PracticaUD1 {
     static void ejecutarEncargado (String etiqueta){
         // Muestra su etiqueta y su PID, que debe ser distinto al del jefe
         System.out.println(etiqueta + " PID = " + ProcessHandle.current().pid());
+        // El camion es el array que comparten los dos hilos. Tiene un hueco por
+        // trabajador y es long para que las sumas grandes no se desborden.
+        long[] camion = new long[2];
+        // Con new Thread solo CREO el hilo, todavia no se ejecuta (su estado es NEW).
+        // Trabajador 1: cajas de la 1 a la 50, escribe en el hueco 0 del camion
+        Thread trabajador1 = new Thread(() -> tarea(camion, 1, 50, 0), "_1");
+        // Trabajador 2: cajas de la 51 a la 100, escribe en el hueco 1 del camion.
+        Thread trabajador2 = new Thread(() -> tarea(camion, 51, 100, 1), "_2");
+
     }
 
     // Construye la orden: java -cp <classpath> PracticaUD1 encargado Seccion-1
@@ -66,5 +75,18 @@ public class PracticaUD1 {
 
         // Solo prepara el proceso, hasta que no se llame a start() no comienza
         return new ProcessBuilder(orden);
+    }
+
+    // Lo que hace cada trabajador: cuenta los tornillos de sus cajas y apunta el total.
+    static void tarea (long[] camion, int desde, int hasta, int ladoCamion) {
+        System.out.println("Inicio del Trabajador" + Thread.currentThread().getName() + " PID = "
+                + ProcessHandle.current().pid());
+        // Acumulador local: cada hilo tiene el suyo, por eso no se pisan.
+        long suma = 0;
+        // Recorro las cajas una a una. La caja i tiene i tornillos, asi que en cada vuelta sumo i.
+        for (int i = desde; i <= hasta; i++) {
+            suma += i;
+        }
+        camion[ladoCamion] = suma;
     }
 }
