@@ -54,6 +54,8 @@ public class PracticaUD1 {
         trabajador1.start();
         trabajador2.start();
 
+        // trabajador1.interrupt(); se usa para comprobar que al interrumpir un hilo salta el "catch" del metodo tarea
+
         trabajador1.join(); // Se espera a que termine el trabajador1.
         trabajador2.join(); // Se espera a que termine el trabajador2.
 
@@ -62,8 +64,6 @@ public class PracticaUD1 {
         System.out.println("Hueco del camión izquierdo: " + camion[0]);
         System.out.println("Hueco del camión derecho: " + camion[1]);
         System.out.println("Carga total del camion: " + (camion[0] + camion[1]));
-
-
     }
 
     // Construye la orden: java -cp <classpath> PracticaUD1 encargado Seccion-1
@@ -103,6 +103,13 @@ public class PracticaUD1 {
         for (int i = desde; i <= hasta; i++) {
             suma += i;
         }
-        camion[ladoCamion] = suma;
+
+        try {
+            Thread.sleep(10000);
+            camion[ladoCamion] = suma;
+        }catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Trabajo interrumpido.");
+        }
     }
 }
