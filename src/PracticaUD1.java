@@ -36,17 +36,33 @@ public class PracticaUD1 {
     }
 
     // Lo que hace el proceso hijo cuando se ejecuta como encargado
-    static void ejecutarEncargado (String etiqueta){
+    static void ejecutarEncargado (String etiqueta) throws InterruptedException {
         // Muestra su etiqueta y su PID, que debe ser distinto al del jefe
         System.out.println(etiqueta + " PID = " + ProcessHandle.current().pid());
         // El camion es el array que comparten los dos hilos. Tiene un hueco por
         // trabajador y es long para que las sumas grandes no se desborden.
         long[] camion = new long[2];
         // Con new Thread solo CREO el hilo, todavia no se ejecuta (su estado es NEW).
-        // Trabajador 1: cajas de la 1 a la 50, escribe en el hueco 0 del camion
+        // Trabajador 1: cajas de la 1 a la 50, escribe en el hueco 0 del camion.
         Thread trabajador1 = new Thread(() -> tarea(camion, 1, 50, 0), "_1");
         // Trabajador 2: cajas de la 51 a la 100, escribe en el hueco 1 del camion.
         Thread trabajador2 = new Thread(() -> tarea(camion, 51, 100, 1), "_2");
+
+        System.out.println("Estado del Trabajador_1 antes de empezar: " + trabajador1.getState());
+
+        // Se ejecutan los hilos.
+        trabajador1.start();
+        trabajador2.start();
+
+        trabajador1.join(); // Se espera a que termine el trabajador1.
+        trabajador2.join(); // Se espera a que termine el trabajador2.
+
+        System.out.println("Estado del Trabajador_1 después de terminar: " + trabajador1.getState());
+
+        System.out.println("Hueco del camión izquierdo: " + camion[0]);
+        System.out.println("Hueco del camión derecho: " + camion[1]);
+        System.out.println("Carga total del camion: " + (camion[0] + camion[1]));
+
 
     }
 
