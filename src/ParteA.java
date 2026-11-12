@@ -5,59 +5,53 @@ import java.util.Collections;
 import java.util.List;
 
 public class ParteA {
-    // throws IOException porque start() puede fallar si no se puede crear el proceso
+    static final int NUM_TORNILLOS_CAJA = 10; // Tornillos que lleva cada caja
+
+    // IOException por start() e InterruptedException por waitFor()
     public static void main(String[] args) throws IOException, InterruptedException {
-        // Si el primer argumento es "encargado", este proceso actua como hijo.
-        // Se comprueba primero args.length > 0 para que el jefe (que no recibe
-        // argumentos) no intente leer args[0] y lance ArrayIndexOutOfBoundsException
+        // Si recibe "encargado" es el proceso hijo. Se mira args.length primero
+        // para que el jefe (sin argumentos) no falle al leer args[0]
         if (args.length > 0 && args[0].equals("encargado")) {
-            // La etiqueta es el segundo argumento. Si no llega, uso una por defecto
             String etiqueta = args.length>1 ? args[1] : "Encargado";
             ejecutarEncargado(etiqueta);
-            // El hijo termina aqui y NO sigue con el codigo del jefe.
-            // Sin este return, el hijo crearia otro hijo y asi sin fin
+            // Sin este return, el hijo ejecutaria el codigo del jefe y crearia hijos sin fin
             return;
         }
 
-        // A partir de aqui solo llega el JEFE (el proceso sin argumentos)
+        // A partir de aqui solo llega el jefe
         System.out.println("JEFE PID = " + ProcessHandle.current().pid());
 
-        // prepararEncargado solo construye la orden, el proceso nace con start().
-        // inheritIO() conecta la entrada y salida del hijo con las del jefe,
-        // asi lo que imprima el encargado se ve en mi misma consola
+        // inheritIO() hace que lo que imprima el hijo salga en mi consola
         Process encargado = prepararEncargado("Seccion-1").inheritIO().start();
         System.out.println("ENCARGADO creado: " + encargado.pid());
-        // Recien lanzado deberia seguir vivo, por eso sale true
         System.out.println("¿Está el encargado?: " + encargado.isAlive());
-        // Con esto espera el hilo main del padre hasta que el proceso hijo termina
+        // Espera a que el hijo termine y devuelve su codigo de salida
         int codigo = encargado.waitFor();
         System.out.println("Encargado se ha ido, código: " + codigo);
         System.out.println("¿Sigue el encargado aquí?: " + encargado.isAlive());
     }
 
-    // Lo que hace el proceso hijo cuando se ejecuta como encargado
+    // Trabajo del proceso hijo: crea el camion y los dos hilos
     static void ejecutarEncargado (String etiqueta) throws InterruptedException {
-        // Muestra su etiqueta y su PID, que debe ser distinto al del jefe
         System.out.println(etiqueta + " PID = " + ProcessHandle.current().pid());
-        // El camion es el array que comparten los dos hilos. Tiene un hueco por
-        // trabajador y es long para que las sumas grandes no se desborden.
-        long[] camion = new long[2];
-        // Con new Thread solo CREO el hilo, todavia no se ejecuta (su estado es NEW).
-        // Trabajador 1: cajas de la 1 a la 50, escribe en el hueco 0 del camion.
-        Thread trabajador1 = new Thread(() -> tarea(camion, 1, 50, 0), "_1");
-        // Trabajador 2: cajas de la 51 a la 100, escribe en el hueco 1 del camion.
-        Thread trabajador2 = new Thread(() -> tarea(camion, 51, 100, 1), "_2");
+        // Un hueco por trabajador. Los hilos viven en este proceso, por eso comparten el array
+        int[] camion = new int[2];
+        // new Thread solo crea el hilo (estado NEW), no se ejecuta hasta start()
+        // Trabajador_1: 30 cajas, escribe en el hueco 0
+        Thread trabajador1 = new Thread(() -> tarea(camion, 0, 30), "_1");
+        // Trabajador_2: 45 cajas, escribe en el hueco 1
+        Thread trabajador2 = new Thread(() -> tarea(camion, 1, 45), "_2");
 
         System.out.println("Estado del Trabajador_1 antes de empezar: " + trabajador1.getState());
 
-        // Se ejecutan los hilos.
         trabajador1.start();
         trabajador2.start();
 
-        // trabajador1.interrupt(); se usa para comprobar que al interrumpir un hilo salta el "catch" del metodo tarea
+        // trabajador1.interrupt(); // Descomentar para comprobar que salta el catch de tarea
 
-        trabajador1.join(); // Se espera a que termine el trabajador1.
-        trabajador2.join(); // Se espera a que termine el trabajador2.
+        // Los dos start() van antes que los join() para que trabajen a la vez
+        trabajador1.join();
+        trabajador2.join();
 
         System.out.println("Estado del Trabajador_1 después de terminar: " + trabajador1.getState());
 
@@ -66,48 +60,44 @@ public class ParteA {
         System.out.println("Carga total del camion: " + (camion[0] + camion[1]));
     }
 
-    // Construye la orden: java -cp <classpath> ParteA encargado Seccion-1
-    // String... permite recibir una cantidad variable de argumentos
+    // Construye la orden: java -cp <classpath> ParteA encargado <etiqueta>
     static ProcessBuilder prepararEncargado(String... argumentos){
-        // Ruta al ejecutable de Java: carpeta de instalacion (java.home) + bin.
-        // En Windows el ejecutable es "java.exe" y en Linux es "java"
+        // Ejecutable de Java segun el sistema operativo
         String ejecutable = Path.of(
                 System.getProperty("java.home"), "bin",
                 System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java"
         ).toString();
 
-        // Lista con las partes del comando, en el orden en que se ejecutan
         List<String> orden = new ArrayList<>();
         orden.add(ejecutable);
-        // -cp indica donde estan las clases, y uso el mismo classpath que el jefe
         orden.add("-cp");
-        orden.add(System.getProperty("java.class.path"));
-        // Nombre completo de esta clase (con el paquete si lo hay), que es la que ejecuta el hijo
+        orden.add(System.getProperty("java.class.path")); // Mismo classpath que el jefe
         orden.add(ParteA.class.getName());
-        // Primer argumento que le llega al hijo en args[0]
-        orden.add("encargado");
-        // Argumentos recibidos (la etiqueta), que le llegan a args[1]
-        Collections.addAll(orden, argumentos);
+        orden.add("encargado"); // Llega al hijo en args[0]
+        Collections.addAll(orden, argumentos); // La etiqueta llega en args[1]
 
-        // Solo prepara el proceso, hasta que no se llame a start() no comienza
+        // Solo prepara el proceso, no arranca hasta que se llame a start()
         return new ProcessBuilder(orden);
     }
 
-    // Lo que hace cada trabajador: cuenta los tornillos de sus cajas y apunta el total.
-    static void tarea (long[] camion, int desde, int hasta, int ladoCamion) {
+    // Cada trabajador embala sus cajas y apunta el total en su hueco del camion
+    static void tarea (int[] camion, int ladoCamion, int cajas) {
         System.out.println("Inicio del Trabajador" + Thread.currentThread().getName() + " PID = "
                 + ProcessHandle.current().pid());
-        // Acumulador local: cada hilo tiene el suyo, por eso no se pisan.
-        long suma = 0;
-        // Recorro las cajas una a una. La caja i tiene i tornillos, asi que en cada vuelta sumo i.
-        for (int i = desde; i <= hasta; i++) {
-            suma += i;
+        // Acumulador local: cada hilo tiene el suyo, por eso no se pisan
+        int suma = 0;
+        // Cada vuelta es una caja embalada
+        for (int i = 0; i < cajas; i++) {
+            suma += NUM_TORNILLOS_CAJA;
         }
 
         try {
+            // La pausa es solo para observar los procesos con pgrep
             Thread.sleep(10000);
+            // Si interrumpen al hilo durante la pausa, no llega a apuntar nada
             camion[ladoCamion] = suma;
         }catch (InterruptedException e) {
+            // Java borra la marca de interrupcion al lanzar la excepcion, se restaura
             Thread.currentThread().interrupt();
             System.err.println("Trabajo interrumpido.");
         }
