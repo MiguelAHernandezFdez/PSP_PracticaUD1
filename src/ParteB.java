@@ -1,11 +1,13 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 public class ParteB {
     // Palabra que el coordinador pasa como primer argumento a cada trabajador.
@@ -44,6 +46,13 @@ public class ParteB {
 
         // El modo llega como argumento. Si no se indica, todos los trabajadores usan "ok"
         String modo = args.length == 0 ? "ok" : args[0];
+        Process trabajador = prepararTrabajador(modo).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+        try (PrintWriter pw = new PrintWriter(trabajador.getOutputStream())) {
+            pw.println(limiteInferior + " " + limiteSuperior);
+        }
+
+        int codigo = trabajador.waitFor();
+        System.out.println("Trabajador terminado, código: " + codigo);
     }
 
     // Comprueba las reglas del enunciado, de la primera a la ultima.
@@ -121,5 +130,38 @@ public class ParteB {
             System.exit(2);
             return;
         }
+
+        long suma = 0;
+        // Recorre todos los numeros del rango, incluido ambos limites
+        for (int n = desde; n <= hasta; n++) {
+            suma += n;
+        }
+
+        // Envia resultado
+        System.out.println(suma);
+    }
+
+    // Prepara otro proceso de Java con la instalacion y el classpath del padre
+    // String... permite recibir una cantidad variable de argumentos
+    static ProcessBuilder prepararTrabajador(String... argumentos){
+        // Construir la ruta al ejecutable de java
+        String ejecutable = Path.of(
+                System.getProperty("java.home"), "bin",
+                System.getProperty("os.name").startsWith("Windows") ? "java.exe" : "java"
+        ).toString();
+
+        // creo una lista vacía con las partes del comando que se van a ejecutar
+        List<String> orden = new ArrayList<>();
+
+        orden.add(ejecutable);
+        orden.add("-cp");
+        orden.add(System.getProperty("java.class.path"));
+        orden.add(ParteB.class.getName());
+        // Primer argumento del nuevo proceso
+        orden.add(PALABRA);
+        // Añado los argumentos recibidos
+        Collections.addAll(orden, argumentos);
+        // Devuelve el objeto que permite lanzar el comando
+        return new ProcessBuilder(orden);
     }
 }
