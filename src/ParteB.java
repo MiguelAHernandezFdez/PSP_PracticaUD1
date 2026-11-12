@@ -1,3 +1,10 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 public class ParteB {
@@ -9,7 +16,7 @@ public class ParteB {
     static final long MAX_LIMITE = 1000000;
     static final int MAX_ESPERA_SEG = 3; // Espera maxima por trabajador, en segundos
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         // Si recibe la palabra, es un trabajador. Se mira args.length primero
         // para que el coordinador (sin argumentos) no falle al leer args[0]
@@ -80,7 +87,39 @@ public class ParteB {
 
 
     // Trabajo de cada proceso trabajador
-    static void ejecutarTrabajador(String modo){
+    static void ejecutarTrabajador(String modo) throws Exception {
+        int desde; // Guarda el limite inferior del rango
+        int hasta; // Guarda el limite superior del rango
 
+        try {
+            // Crear un lector de texto
+            var lector = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)); // Interpreta los bytes como UTF-8
+
+            // Leer la linea y comprobar que no es null
+            String linea = lector.readLine();
+            if (linea == null) {
+                throw new IllegalArgumentException("La entrada está vacía");
+            }
+
+            // Eliminar los espacios y separar por uno cada espacio
+            String[] partes = linea.trim().split("\\s+");
+            // Debe de haber exactamente dos valores: inicio y final
+            if (partes.length != 2) {
+                throw new IllegalArgumentException("Se esperan dos limites");
+            }
+
+            desde = Integer.parseInt(partes[0]); // Convierte el primer texto a int
+            hasta = Integer.parseInt(partes[1]); // Convierte el segundo texto a int
+
+            // Comprobar las tres reglas del rango
+            if (desde < 1 || hasta > MAX_LIMITE || desde > hasta) {
+                throw new IllegalArgumentException("Rango no válido, debe ser desde 1 hasta 1.000.000 y de menor a mayor.");
+            }
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("ENTRADA INVALIDA: " + e.getMessage());
+            System.exit(2);
+            return;
+        }
     }
 }
