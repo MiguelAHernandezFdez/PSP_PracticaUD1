@@ -30,9 +30,54 @@ public class ParteB {
         System.out.println("Escribe la cantidad de trabajadores entre 2 y 4.");
         int trabajadores = sc.nextInt();
 
+        // Si la entrada no es valida, el programa termina sin lanzar ningun trabajador
+        if (!validarEntrada(limiteInferior, limiteSuperior, trabajadores)) {
+            return;
+        }
+
         // El modo llega como argumento. Si no se indica, todos los trabajadores usan "ok"
         String modo = args.length == 0 ? "ok" : args[0];
     }
+
+    // Comprueba las reglas del enunciado, de la primera a la ultima.
+    // Devuelve false en cuanto una falla, para no seguir con datos incorrectos
+    static boolean validarEntrada(int limiteInferior, int limiteSuperior, int trabajadores) {
+        if (limiteInferior < 1) {
+            System.out.println("El límite inferior debe ser al menos 1.");
+            return false;
+        }
+
+        if (limiteSuperior > MAX_LIMITE) {
+            System.out.println("El límite superior no puede superar " + MAX_LIMITE + ".");
+            return false;
+        }
+
+        if (limiteInferior > limiteSuperior) {
+            System.out.println("El límite inferior (" + limiteInferior
+                    + ") no puede ser mayor que el superior (" + limiteSuperior + ").");
+            return false;
+        }
+
+        if (trabajadores < MIN_TRABAJADORES || trabajadores > MAX_TRABAJADORES) {
+            System.out.println("El número de trabajadores debe estar entre "
+                    + MIN_TRABAJADORES + " y " + MAX_TRABAJADORES + ".");
+            return false;
+        }
+
+        // Solo tiene sentido con los limites ordenados y los trabajadores validos, por eso es importante ponerla
+        // la ultima.
+        // El +1 es porque se cuentan los dos extremos
+        int total = limiteSuperior - limiteInferior + 1;
+        if (total < trabajadores) {
+            System.out.println("El intervalo tiene " + total + " números y hay " + trabajadores
+                    + " trabajadores: debe haber al menos uno por trabajador.");
+            return false;
+        }
+        // Si ninguna condicion ha fallado, la entrada es valida
+        return true;
+    }
+
+
 
     // Trabajo de cada proceso trabajador
     static void ejecutarTrabajador(String modo){
