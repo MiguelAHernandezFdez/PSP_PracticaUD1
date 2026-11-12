@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class PracticaUD1 {
+public class ParteA {
     // throws IOException porque start() puede fallar si no se puede crear el proceso
     public static void main(String[] args) throws IOException, InterruptedException {
         // Si el primer argumento es "encargado", este proceso actua como hijo.
@@ -66,7 +66,7 @@ public class PracticaUD1 {
         System.out.println("Carga total del camion: " + (camion[0] + camion[1]));
     }
 
-    // Construye la orden: java -cp <classpath> PracticaUD1 encargado Seccion-1
+    // Construye la orden: java -cp <classpath> ParteA encargado Seccion-1
     // String... permite recibir una cantidad variable de argumentos
     static ProcessBuilder prepararEncargado(String... argumentos){
         // Ruta al ejecutable de Java: carpeta de instalacion (java.home) + bin.
@@ -83,7 +83,7 @@ public class PracticaUD1 {
         orden.add("-cp");
         orden.add(System.getProperty("java.class.path"));
         // Nombre completo de esta clase (con el paquete si lo hay), que es la que ejecuta el hijo
-        orden.add(PracticaUD1.class.getName());
+        orden.add(ParteA.class.getName());
         // Primer argumento que le llega al hijo en args[0]
         orden.add("encargado");
         // Argumentos recibidos (la etiqueta), que le llegan a args[1]
