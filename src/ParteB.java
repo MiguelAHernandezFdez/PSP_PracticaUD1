@@ -2,12 +2,12 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 
 public class ParteB {
     // Palabra que el coordinador pasa como primer argumento a cada trabajador.
@@ -20,8 +20,8 @@ public class ParteB {
 
     public static void main(String[] args) throws Exception {
 
-        // Si recibe la palabra, es un trabajador. Se mira args.length primero
-        // para que el coordinador (sin argumentos) no falle al leer args[0]
+        // Si el primer argumento es la palabra, este proceso es un trabajador.
+        // Se mira args.length primero para no leer args[0] si no hay argumentos
         if  (args.length > 0 && args[0].equals(PALABRA)) {
             // El modo es el segundo argumento. Si no llega, uso "ok"
             String modo = args.length>1 ? args[1] : "ok";
@@ -39,20 +39,37 @@ public class ParteB {
         System.out.println("Escribe la cantidad de trabajadores entre 2 y 4.");
         int trabajadores = sc.nextInt();
 
-        // Si la entrada no es valida, el programa termina sin lanzar ningun trabajador
+        // Si la entrada no es valida, termina sin lanzar ningun trabajador
         if (!validarEntrada(limiteInferior, limiteSuperior, trabajadores)) {
             return;
         }
 
-        // El modo llega como argumento. Si no se indica, todos los trabajadores usan "ok"
+        // El modo llega como argumento. Si no se indica, se usa "ok"
         String modo = args.length == 0 ? "ok" : args[0];
-        Process trabajador = prepararTrabajador(modo).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+
+        // El resultado del trabajador se recoge en un archivo temporal y no con un flujo:
+        // asi el waitFor con limite de tiempo manda y la lectura va despues,
+        // sin que un trabajador lento deje bloqueado al coordinador
+        Path notas = Files.createTempFile("trabajador-", ".txt");
+
+        // Solo se redirige la salida estandar al archivo. Los errores salen por mi consola
+        // y no uso inheritIO() porque necesito escribirle el encargo al trabajador
+        Process trabajador = prepararTrabajador(modo).redirectError(ProcessBuilder.Redirect.INHERIT)
+                .redirectOutput(notas.toFile()).start();
+        // Envio el encargo. Al salir del try se cierra la entrada y el trabajador deja de esperar
         try (PrintWriter pw = new PrintWriter(trabajador.getOutputStream())) {
             pw.println(limiteInferior + " " + limiteSuperior);
         }
 
         int codigo = trabajador.waitFor();
         System.out.println("Trabajador terminado, código: " + codigo);
+
+        // Se lee despues de esperar, cuando el trabajador ya ha terminado de escribir.
+        // trim() quita el salto de linea que anade println
+        String textoLeido = Files.readString(notas).trim();
+        long cantidad = Long.parseLong(textoLeido);
+        System.out.println("Total de tornillos: " + cantidad);
+        Files.deleteIfExists(notas);
     }
 
     // Comprueba las reglas del enunciado, de la primera a la ultima.
