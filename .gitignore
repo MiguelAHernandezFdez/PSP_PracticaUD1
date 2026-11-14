@@ -33,3 +33,4 @@ bin/
 ### Archivos propios de IntelliJ ###
 .idea/
 *.iml
+temporales/

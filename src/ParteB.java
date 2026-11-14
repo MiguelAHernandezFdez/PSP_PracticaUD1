@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
+@SuppressWarnings("NonAsciiCharacters")
 public class ParteB {
     // Palabra que el coordinador pasa como primer argumento a cada trabajador.
     // Se usa en el if de main y al construir la orden, por eso esta en una constante
@@ -47,29 +48,73 @@ public class ParteB {
         // El modo llega como argumento. Si no se indica, se usa "ok"
         String modo = args.length == 0 ? "ok" : args[0];
 
-        // El resultado del trabajador se recoge en un archivo temporal y no con un flujo:
-        // asi el waitFor con limite de tiempo manda y la lectura va despues,
-        // sin que un trabajador lento deje bloqueado al coordinador
-        Path notas = Files.createTempFile("trabajador-", ".txt");
+        // Reparto del intervalo: el sobrante de la division va a los ultimos trabajadores
+        int total = limiteSuperior - limiteInferior + 1;
+        int base = total / trabajadores;
+        int resto = total % trabajadores;
+        int siguienteDesde = limiteInferior;
 
-        // Solo se redirige la salida estandar al archivo. Los errores salen por mi consola
-        // y no uso inheritIO() porque necesito escribirle el encargo al trabajador
-        Process trabajador = prepararTrabajador(modo).redirectError(ProcessBuilder.Redirect.INHERIT)
-                .redirectOutput(notas.toFile()).start();
-        // Envio el encargo. Al salir del try se cierra la entrada y el trabajador deja de esperar
-        try (PrintWriter pw = new PrintWriter(trabajador.getOutputStream())) {
-            pw.println(limiteInferior + " " + limiteSuperior);
+        // Un hueco por trabajador. Si solo se llegan a crear algunos, el resto queda en null
+        Process[] procesos = new Process[trabajadores];
+        Path[] archivos = new Path[trabajadores];
+
+        Path carpeta = Path.of("temporales");
+        Files.createDirectories(carpeta);
+
+        try {
+            // Primer bucle: lanza todos los trabajadores y les envia su encargo, sin esperar a ninguno
+            for (int i = 0; i < trabajadores; i++) {
+                int tamano = base;
+                if (i >= trabajadores - resto) {
+                    tamano++;
+                }
+                int desde = siguienteDesde;
+                int hasta = desde + tamano - 1;
+                siguienteDesde = hasta + 1;
+
+                // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
+                archivos[i] = Files.createTempFile(carpeta, "trabajador-", ".txt");
+                procesos[i] = prepararTrabajador(modo)
+                        .redirectError(ProcessBuilder.Redirect.INHERIT)
+                        .redirectOutput(archivos[i].toFile()).start();
+
+                // Al salir del try se cierra la entrada y el trabajador deja de esperar
+                try (PrintWriter pw = new PrintWriter(procesos[i].getOutputStream())) {
+                    pw.println(desde + " " + hasta);
+                }
+            }
+
+            // Segundo bucle: con todos en marcha, se espera a cada uno y se recoge su resultado
+            long sumaTotal = 0;
+            boolean todoCorrecto = true;
+
+            for (int i = 0; i < trabajadores; i++) {
+                int codigo = procesos[i].waitFor();
+                System.out.println("Trabajador " + i + " terminado, código: " + codigo);
+
+                if (codigo != 0) {
+                    todoCorrecto = false;
+                } else {
+                    String textoLeido = Files.readString(archivos[i]).trim();
+                    sumaTotal += Long.parseLong(textoLeido);
+                }
+            }
+
+            if (todoCorrecto) {
+                System.out.println("Total de tornillos: " + sumaTotal);
+            }
+        } finally {
+            // Se ejecuta siempre, aunque algo falle. Solo se toca lo que llego a crearse
+            for (int i = 0; i < trabajadores; i++) {
+                if (procesos[i] != null && procesos[i].isAlive()) {
+                    procesos[i].destroyForcibly();
+                    procesos[i].waitFor();
+                }
+                if (archivos[i] != null) {
+                    Files.deleteIfExists(archivos[i]); // Borrar los archivos temporales si los hay
+                }
+            }
         }
-
-        int codigo = trabajador.waitFor();
-        System.out.println("Trabajador terminado, código: " + codigo);
-
-        // Se lee despues de esperar, cuando el trabajador ya ha terminado de escribir.
-        // trim() quita el salto de linea que anade println
-        String textoLeido = Files.readString(notas).trim();
-        long cantidad = Long.parseLong(textoLeido);
-        System.out.println("Total de tornillos: " + cantidad);
-        Files.deleteIfExists(notas);
     }
 
     // Comprueba las reglas del enunciado, de la primera a la ultima.
