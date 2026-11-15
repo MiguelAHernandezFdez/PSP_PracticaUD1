@@ -75,7 +75,7 @@ public class ParteB {
 
                 // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
                 archivos[i] = Files.createTempFile(carpeta, "trabajador-", ".txt");
-                procesos[i] = prepararTrabajador(modo)
+                procesos[i] = prepararTrabajador(modoTrabajador)
                         .redirectError(ProcessBuilder.Redirect.INHERIT)
                         .redirectOutput(archivos[i].toFile()).start();
 
@@ -191,6 +191,23 @@ public class ParteB {
         } catch (IllegalArgumentException e) {
             System.err.println("ENTRADA INVALIDA: " + e.getMessage());
             System.exit(2);
+            return;
+        }
+
+        // Si se pide lentitud
+        if (modo.equals("lento")){
+            Thread.sleep(10_000);
+        }
+
+        // Si pide simular un error
+        if (modo.equals("error")){
+            System.err.println("Fallo simulado");
+            System.exit(3); // Termino con codigo error 3
+        }
+
+        // Si se pidio una respuesta con formato incorrecto
+        if (modo.equals("malformado")){
+            System.out.println("no-numero"); // Deuveulve texto en vez de un entero
             return;
         }
 
