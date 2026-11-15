@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 public class ParteB {
     // Palabra que el coordinador pasa como primer argumento a cada trabajador.
@@ -90,10 +91,14 @@ public class ParteB {
             boolean todoCorrecto = true;
 
             for (int i = 0; i < trabajadores; i++) {
-                int codigo = procesos[i].waitFor();
-                System.out.println("Trabajador " + i + " terminado, código: " + codigo);
+                // true si termino a tiempo, false si pasaron los 3 segundos y sigue vivo
+                boolean terminado = procesos[i].waitFor(MAX_ESPERA_SEG, TimeUnit.SECONDS);
 
-                if (codigo != 0) {
+                if (!terminado) {
+                    System.out.println("Trabajador " + i + ": tiempo agotado (más de " + MAX_ESPERA_SEG + " segundos).");
+                    todoCorrecto = false;
+                } else if (procesos[i].exitValue() != 0) {
+                    System.out.println("Trabajador " + i + ": terminó con error, código " + procesos[i].exitValue() + ".");
                     todoCorrecto = false;
                 } else {
                     String textoLeido = Files.readString(archivos[i]).trim();
