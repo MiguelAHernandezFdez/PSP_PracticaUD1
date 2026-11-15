@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
-@SuppressWarnings("NonAsciiCharacters")
 public class ParteB {
     // Palabra que el coordinador pasa como primer argumento a cada trabajador.
     // Se usa en el if de main y al construir la orden, por eso esta en una constante
@@ -71,6 +70,8 @@ public class ParteB {
                 int desde = siguienteDesde;
                 int hasta = desde + tamano - 1;
                 siguienteDesde = hasta + 1;
+
+                String modoTrabajador = i == trabajadores - 1 ? modo : "ok";
 
                 // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
                 archivos[i] = Files.createTempFile(carpeta, "trabajador-", ".txt");
