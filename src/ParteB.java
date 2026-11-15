@@ -102,7 +102,13 @@ public class ParteB {
                     todoCorrecto = false;
                 } else {
                     String textoLeido = Files.readString(archivos[i]).trim();
-                    sumaTotal += Long.parseLong(textoLeido);
+                    try {
+                        sumaTotal += Long.parseLong(textoLeido);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Trabajador " + i +
+                                ": respuesta no valida, devolvio " + textoLeido + " en lugar de un número.");
+                        todoCorrecto = false;
+                    }
                 }
             }
 
