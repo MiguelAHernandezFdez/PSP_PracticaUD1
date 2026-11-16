@@ -235,14 +235,36 @@ null y se saltan.
 
 ## 6. Casos de prueba
 
-| Caso                                   | Resultado esperado                              |
-|----------------------------------------|-------------------------------------------------|
-| 1 al 100 con 3 trabajadores            | 5050 (caso obligatorio)                         |
-| 1 al 10 con 4 trabajadores             | 55, con tramos de tamaño 2, 2, 3 y 3            |
-| 5 al 11 con 2 trabajadores             | 56                                              |
-| 1 al 4 con 4 trabajadores              | 10, un número por trabajador                    |
-| 1 al 3 con 4 trabajadores              | Rechazado: intervalo demasiado pequeño          |
-| Letras en vez de un número             | Mensaje de entrada no numérica                  |
-| Modo error                             | Fallo del último trabajador, código 3, sin total |
-| Modo lento                             | Tiempo agotado a los 3 segundos, sin total      |
-| Modo malformado                        | Respuesta no válida del último, sin total       |
+Todos los casos se ejecutaron y el resultado coincide con el esperado. Tras
+cada fallo se comprobó con `pgrep -af ParteB` que no quedaba ningún proceso
+vivo y que la carpeta `temporales/` estaba vacía.
+
+### Entradas válidas
+
+| Caso                           | Resultado                                  |
+|--------------------------------|--------------------------------------------|
+| desde 1 al 100 con 3 trabajadores    | 5050 (caso obligatorio)                    |
+| desde 1 al 10 con 4 trabajadores     | 55, con tramos de tamaño 2, 2, 3 y 3       |
+| desde 5 al 11 con 2 trabajadores     | 56                                         |
+| desde 1 al 4 con 4 trabajadores      | 10, un número por trabajador               |
+| desde 1 al 1000000 con 4 trabajadores| 500000500000 (la suma necesita long)       |
+
+### Entradas rechazadas
+
+| Caso                           | Resultado                                  |
+|--------------------------------|--------------------------------------------|
+| desde 1 al 3 con 4 trabajadores      | Intervalo demasiado pequeño                |
+| Límite inferior 0              | El límite inferior debe ser al menos 1     |
+| Límite superior 2000000        | El límite superior no puede superar 1000000|
+| Inferior 50 y superior 10      | El inferior no puede ser mayor que el superior |
+| 5 o 1 trabajadores             | El número de trabajadores debe estar entre 2 y 4 |
+| Letras o decimales             | Mensaje de número entero, sin excepción    |
+
+### Fallos (desde 1 al 100)
+
+| Modo       | Trabajadores | Resultado                                              |
+|------------|--------------|--------------------------------------------------------|
+| error      | 3            | Trabajador 2 termina con código 3, sin total           |
+| lento      | 3            | Tiempo agotado a los 3 segundos, sin total             |
+| malformado | 3            | Respuesta no válida del trabajador 2, sin total        |
+| cualquiera | 4 y 2        | El fallo cae siempre en el último (el 3 y el 1)        |

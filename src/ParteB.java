@@ -42,7 +42,7 @@ public class ParteB {
             System.out.println("Escribe la cantidad de trabajadores entre 2 y 4.");
             trabajadores = sc.nextInt();
         } catch (InputMismatchException e) {
-            System.out.println("Debes escribir un número entero, por favor.");
+            System.err.println("Debes escribir un número entero, por favor.");
             return;
         }
 
