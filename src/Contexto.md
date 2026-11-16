@@ -1,3 +1,12 @@
+# Práctica UD1
+
+Repositorio con dos clases que se ejecutan por separado:
+
+| Clase       | Qué es  | Cómo se ejecuta                                                                                   |
+|-------------|---------|---------------------------------------------------------------------------------------------------|
+| ParteA.java | Parte A | Sin argumentos                                                                                    |
+| ParteB.java | Parte B | Escribe los tres datos por consola. El modo (ok, error, lento o malformado) es un argumento opcional |
+
 # Práctica UD1 - Parte A
 
 ## 1. Contexto de la práctica
@@ -36,6 +45,22 @@ documentará aparte.
 | Proceso hijo  | Segunda ejecución del mismo programa, lanzada por el padre | Encargado                   | Uno propio, distinto al del jefe |
 | Hilos         | Dos Thread dentro del hijo                                 | Trabajador_1 y Trabajador_2 | El mismo que el encargado        |
 
+## 4. Pausa, interrupción y decisiones
+
+| Requisito                    | Cómo se resuelve                                                              |
+|------------------------------|-------------------------------------------------------------------------------|
+| Evitar procesos infinitos    | El hijo se reconoce por el argumento "encargado" y sale con return            |
+| Pausa de observación         | Thread.sleep de 10 segundos en cada hilo, solo para verlos con pgrep          |
+| Interrupción                 | El catch restaura la marca con interrupt() y avisa por System.err             |
+
+Si se interrumpe a un hilo durante la pausa no llega a escribir su hueco del
+camión, que se queda en 0. Se comprobó interrumpiendo a Trabajador_1.
+
+Decisiones: los hilos recorren sus cajas y suman 10 tornillos por vuelta;
+comparten un array int[] de dos huecos; el programa se distingue por
+argumentos (sin argumentos es el jefe, con "encargado" es el hijo); una sola
+clase con un método por responsabilidad.
+
 # Práctica UD1 - Parte B
 
 ## 1. Contexto de la práctica
@@ -44,6 +69,10 @@ El mismo almacén, ahora con muchas más cajas. Las cajas están numeradas y
 la caja número n contiene n tornillos. El coordinador quiere saber cuántos
 tornillos hay en un tramo de cajas (del límite inferior al superior) y
 reparte el recuento entre varios trabajadores.
+
+Diferencia con la Parte A: allí todas las cajas llevan 10 tornillos. Aquí
+la caja n lleva n tornillos, para que el recuento sea la suma de los
+números de un intervalo, que es lo que pide el enunciado.
 
 | Elemento del enunciado | Qué representa en el almacén                                                   |
 |------------------------|--------------------------------------------------------------------------------|
@@ -56,7 +85,8 @@ reparte el recuento entre varios trabajadores.
 Vocabulario de la Parte B: aquí los trabajadores son procesos distintos
 (no hilos) y no existe la figura del encargado. Cada trabajador tiene su
 propio PID y su propia memoria, así que no hay camión compartido: el
-resultado viaja por la salida estándar del trabajador.
+resultado viaja por la salida estándar del trabajador, que el coordinador
+redirige a un archivo temporal.
 
 ## 2. Datos de entrada
 
@@ -76,16 +106,17 @@ Se comprueba en este orden y se rechaza en el primer fallo. El orden importa:
 la última regla solo tiene sentido con los límites ordenados y un número de
 trabajadores válido.
 
-| Orden | Condición de error                       | Mensaje                                                                         |
-|-------|------------------------------------------|---------------------------------------------------------------------------------|
-| 1     | Inferior menor que 1                     | El límite inferior debe ser al menos 1.                                         |
-| 2     | Superior mayor que 1.000.000             | El límite superior no puede superar 1000000.                                    |
-| 3     | Inferior mayor que superior              | El límite inferior (X) no puede ser mayor que el superior (Y).                  |
-| 4     | Trabajadores menores que 2 o mayores que 4 | El número de trabajadores debe estar entre 2 y 4.                             |
-| 5     | Menos números que trabajadores           | El intervalo tiene (X) números y hay (Y) trabajadores: debe haber al menos uno por trabajador. |
+| Orden | Condición de error                         | Mensaje                                                                                        |
+|-------|--------------------------------------------|------------------------------------------------------------------------------------------------|
+| 1     | Algún dato no es un número entero          | Debes escribir un número entero, por favor.                                                    |
+| 2     | Inferior menor que 1                       | El límite inferior debe ser al menos 1.                                                        |
+| 3     | Superior mayor que 1.000.000               | El límite superior no puede superar 1000000.                                                   |
+| 4     | Inferior mayor que superior                | El límite inferior (X) no puede ser mayor que el superior (Y).                                 |
+| 5     | Trabajadores menores que 2 o mayores que 4 | El número de trabajadores debe estar entre 2 y 4.                                              |
+| 6     | Menos números que trabajadores             | El intervalo tiene (X) números y hay (Y) trabajadores: debe haber al menos uno por trabajador. |
 
-La validación se hace antes de crear ningún proceso, así que un error de
-entrada no deja nada que limpiar.
+La primera condición se comprueba al leer los datos con Scanner (captura
+InputMismatchException) y las demás en el método validarEntrada.
 
 ## 3. Reparto del intervalo
 
@@ -100,6 +131,27 @@ que escribe el usuario, no en 1.
 Comprobaciones: el hasta del último trabajador es el límite superior, y los
 tamaños suman total.
 
+```
+total = superior - inferior + 1
+base  = total / trabajadores        (división entera)
+resto = total % trabajadores
+siguienteDesde = inferior
+
+para i desde 0 hasta trabajadores - 1:
+    tamaño = base
+    si i >= trabajadores - resto:
+        tamaño = tamaño + 1
+    desde = siguienteDesde
+    hasta = desde + tamaño - 1
+    siguienteDesde = hasta + 1
+```
+
+| Intervalo | Trabajadores | Reparto                |
+|-----------|--------------|------------------------|
+| 1-10      | 4            | 1-2, 3-4, 5-7, 8-10    |
+| 1-100     | 3            | 1-33, 34-66, 67-100    |
+| 5-11      | 2            | 5-7, 8-11              |
+
 ## 4. Comunicación entre coordinador y trabajador
 
 Contrato fijado por el enunciado:
@@ -111,7 +163,9 @@ Contrato fijado por el enunciado:
 | Salida de error del trabajador  | Diagnóstico o explicación de fallos                 |
 
 El coordinador cierra la entrada del trabajador tras enviar el encargo.
-El trabajador valida su entrada aunque venga del coordinador.
+El trabajador valida su entrada aunque venga del coordinador. Si es
+incorrecta (línea vacía, no son dos enteros o el rango no es válido),
+escribe el motivo por la salida de error y termina con código 2.
 
 | Código de salida | Significado          |
 |------------------|----------------------|
@@ -122,7 +176,7 @@ El trabajador valida su entrada aunque venga del coordinador.
 ### Recogida de resultados: archivos temporales
 
 El resultado de cada trabajador se recoge en un archivo temporal propio
-y no leyendo su salida con un flujo.
+y no leyendo su salida con un flujo. Los archivos temporales se guardan en la carpeta temporales/.
 
 Motivo: el coordinador espera como máximo 3 segundos a cada trabajador.
 Leer un flujo con readAllBytes() bloquea hasta que el trabajador cierra su
@@ -143,7 +197,8 @@ Se hace en un bloque finally.
 
 ## 5. Modos de prueba y fallos
 
-Los modos especiales solo afectan al último trabajador.
+Los modos especiales solo afectan al último trabajador: el coordinador le
+pasa el modo del usuario y a los demás les pasa siempre ok.
 
 | Modo       | Comportamiento del último trabajador                  |
 |------------|-------------------------------------------------------|
@@ -152,14 +207,42 @@ Los modos especiales solo afectan al último trabajador.
 | lento      | Espera 10 segundos antes de responder                 |
 | malformado | Termina con código 0 pero devuelve texto, no un número |
 
-El coordinador espera como máximo 3 segundos por cada espera de un trabajador.
+### Detección de fallos
+
+El coordinador lanza a todos los trabajadores y después espera a cada uno
+como máximo 3 segundos. Distingue tres fallos:
+
+| Fallo                          | Cómo se detecta                                  | Mensaje                                    |
+|--------------------------------|--------------------------------------------------|--------------------------------------------|
+| Tiempo agotado                 | waitFor con límite devuelve false                | Trabajador N: tiempo agotado               |
+| Termina con error              | Terminó y su código no es 0                      | Trabajador N: terminó con error, código C  |
+| Respuesta incumple el contrato | Código 0, pero su salida no es un número         | Trabajador N: respuesta no válida          |
+
+El tiempo se comprueba antes que el código porque exitValue() falla si el
+proceso sigue vivo. Si falla algún trabajador no se muestra el total.
+
+### Limpieza
+
+Se hace en un bloque finally, así que ocurre siempre, también si el fallo
+llega a mitad del lanzamiento. Los procesos y los archivos están en arrays
+con una posición por trabajador, y las que no llegaron a crearse quedan en
+null y se saltan.
+
+- Los procesos que siguen vivos se matan con destroyForcibly() y se espera
+  a que terminen.
+- Los archivos temporales se borran. La carpeta temporales/ queda vacía y
+  está en el .gitignore.
 
 ## 6. Casos de prueba
 
-| Caso                               | Resultado esperado                          |
-|------------------------------------|---------------------------------------------|
-| 1 al 100 con 3 trabajadores        | 5050 (caso obligatorio)                     |
-| Intervalo no divisible (1-10 con 4)| Total 55, con tramos de tamaño 2, 2, 3 y 3  |
-| 1 al 4 con 4 trabajadores          | Válido, un número por trabajador            |
-| 1 al 3 con 4 trabajadores          | Rechazado: intervalo demasiado pequeño      |
-| Los cuatro modos                   | Pendiente                                   |
+| Caso                                   | Resultado esperado                              |
+|----------------------------------------|-------------------------------------------------|
+| 1 al 100 con 3 trabajadores            | 5050 (caso obligatorio)                         |
+| 1 al 10 con 4 trabajadores             | 55, con tramos de tamaño 2, 2, 3 y 3            |
+| 5 al 11 con 2 trabajadores             | 56                                              |
+| 1 al 4 con 4 trabajadores              | 10, un número por trabajador                    |
+| 1 al 3 con 4 trabajadores              | Rechazado: intervalo demasiado pequeño          |
+| Letras en vez de un número             | Mensaje de entrada no numérica                  |
+| Modo error                             | Fallo del último trabajador, código 3, sin total |
+| Modo lento                             | Tiempo agotado a los 3 segundos, sin total      |
+| Modo malformado                        | Respuesta no válida del último, sin total       |

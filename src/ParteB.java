@@ -51,7 +51,7 @@ public class ParteB {
             return;
         }
 
-        // El modo llega como argumento. Si no se indica, se usa "ok"
+        // El modo llega como argumento (por defecto "ok") y solo lo recibe el ultimo trabajador
         String modo = args.length == 0 ? "ok" : args[0];
 
         // Reparto del intervalo: el sobrante de la division va a los ultimos trabajadores
@@ -64,6 +64,7 @@ public class ParteB {
         Process[] procesos = new Process[trabajadores];
         Path[] archivos = new Path[trabajadores];
 
+        // Carpeta del proyecto para los archivos temporales (esta en el .gitignore)
         Path carpeta = Path.of("temporales");
         Files.createDirectories(carpeta);
 
@@ -78,10 +79,11 @@ public class ParteB {
                 int hasta = desde + tamano - 1;
                 siguienteDesde = hasta + 1;
 
+                // Solo el ultimo trabajador recibe el modo especial, los demas usan "ok"
                 String modoTrabajador = i == trabajadores - 1 ? modo : "ok";
 
-                // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
                 // Resultado en archivo temporal y no en flujo: asi waitFor con limite manda y nada se bloquea
+                // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
                 archivos[i] = Files.createTempFile(carpeta, "trabajador-", ".txt");
                 procesos[i] = prepararTrabajador(modoTrabajador)
                         .redirectError(ProcessBuilder.Redirect.INHERIT)
@@ -98,17 +100,19 @@ public class ParteB {
             boolean todoCorrecto = true;
 
             for (int i = 0; i < trabajadores; i++) {
-                // true si termino a tiempo, false si pasaron los 3 segundos y sigue vivo
+                // true si termino a tiempo, false si se agoto la espera y sigue vivo
                 boolean terminado = procesos[i].waitFor(MAX_ESPERA_SEG, TimeUnit.SECONDS);
 
                 if (!terminado) {
                     System.out.println("Trabajador " + i + ": tiempo agotado (más de " + MAX_ESPERA_SEG + " segundos).");
                     todoCorrecto = false;
+                // exitValue() falla si el proceso sigue vivo, por eso va despues de comprobar el tiempo
                 } else if (procesos[i].exitValue() != 0) {
                     System.out.println("Trabajador " + i + ": terminó con error, código " + procesos[i].exitValue() + ".");
                     todoCorrecto = false;
                 } else {
                     String textoLeido = Files.readString(archivos[i]).trim();
+                    // Solo la conversion puede fallar: el trabajador termino bien pero pudo devolver texto
                     try {
                         sumaTotal += Long.parseLong(textoLeido);
                     } catch (NumberFormatException e) {
@@ -123,7 +127,8 @@ public class ParteB {
                 System.out.println("Total de tornillos: " + sumaTotal);
             }
         } finally {
-            // Se ejecuta siempre, aunque algo falle. Solo se toca lo que llego a crearse
+            // Se ejecuta siempre, aunque algo falle: mata los trabajadores que sigan vivos, espera a que terminen y
+            // borra sus archivos. Solo se toca lo que llego a crearse
             for (int i = 0; i < trabajadores; i++) {
                 if (procesos[i] != null && procesos[i].isAlive()) {
                     procesos[i].destroyForcibly();
@@ -161,9 +166,8 @@ public class ParteB {
             return false;
         }
 
-        // Solo tiene sentido con los limites ordenados y los trabajadores validos, por eso es importante ponerla
-        // la ultima.
-        // El +1 es porque se cuentan los dos extremos
+        // Va la ultima en comprobaciones: necesita los limites ordenados y un numero de trabajadores valido. El +1 es
+        // porque se cuentan los dos extremos
         int total = limiteSuperior - limiteInferior + 1;
         if (total < trabajadores) {
             System.out.println("El intervalo tiene " + total + " números y hay " + trabajadores
@@ -191,7 +195,7 @@ public class ParteB {
                 throw new IllegalArgumentException("La entrada está vacía");
             }
 
-            // Eliminar los espacios y separar por uno cada espacio
+            // Quita espacios sobrantes y separa por espacios
             String[] partes = linea.trim().split("\\s+");
             // Debe de haber exactamente dos valores: inicio y final
             if (partes.length != 2) {
@@ -212,7 +216,7 @@ public class ParteB {
             return;
         }
 
-        // Si se pide lentitud
+        // Solo retrasa: despues calcula con normalidad
         if (modo.equals("lento")){
             Thread.sleep(10_000);
         }
@@ -225,7 +229,7 @@ public class ParteB {
 
         // Si se pidio una respuesta con formato incorrecto
         if (modo.equals("malformado")){
-            System.out.println("no-numero"); // Deuveulve texto en vez de un entero
+            System.out.println("no-numero"); /// Escribe texto en vez de un numero; el return evita escribir tambien el resultado
             return;
         }
 
@@ -239,8 +243,7 @@ public class ParteB {
         System.out.println(suma);
     }
 
-    // Prepara otro proceso de Java con la instalacion y el classpath del padre
-    // String... permite recibir una cantidad variable de argumentos
+    // Construye la orden: java -cp <classpath> ParteB coordinador <modo>
     static ProcessBuilder prepararTrabajador(String... argumentos){
         // Construir la ruta al ejecutable de java
         String ejecutable = Path.of(
