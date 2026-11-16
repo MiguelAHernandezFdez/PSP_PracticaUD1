@@ -4,10 +4,7 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class ParteB {
@@ -32,13 +29,22 @@ public class ParteB {
         }
 
         // A partir de aqui solo llega el coordinador. Los tres datos los escribe el usuario
-        Scanner sc = new Scanner(System.in);
-        System.out.println("Escribe el limite inferior (Minimo 1).");
-        int limiteInferior = sc.nextInt();
-        System.out.println("Escribe el limite superior (Máximo 1000000).");
-        int limiteSuperior = sc.nextInt();
-        System.out.println("Escribe la cantidad de trabajadores entre 2 y 4.");
-        int trabajadores = sc.nextInt();
+        int limiteInferior;
+        int limiteSuperior;
+        int trabajadores;
+
+        try {
+            Scanner sc = new Scanner(System.in);
+            System.out.println("Escribe el limite inferior (Minimo 1).");
+            limiteInferior = sc.nextInt();
+            System.out.println("Escribe el limite superior (Máximo 1000000).");
+            limiteSuperior = sc.nextInt();
+            System.out.println("Escribe la cantidad de trabajadores entre 2 y 4.");
+            trabajadores = sc.nextInt();
+        } catch (InputMismatchException e) {
+            System.out.println("Debes escribir un número entero, por favor.");
+            return;
+        }
 
         // Si la entrada no es valida, termina sin lanzar ningun trabajador
         if (!validarEntrada(limiteInferior, limiteSuperior, trabajadores)) {
@@ -75,6 +81,7 @@ public class ParteB {
                 String modoTrabajador = i == trabajadores - 1 ? modo : "ok";
 
                 // Se guarda en cuanto se crea, para poder borrarlo aunque start() falle
+                // Resultado en archivo temporal y no en flujo: asi waitFor con limite manda y nada se bloquea
                 archivos[i] = Files.createTempFile(carpeta, "trabajador-", ".txt");
                 procesos[i] = prepararTrabajador(modoTrabajador)
                         .redirectError(ProcessBuilder.Redirect.INHERIT)
