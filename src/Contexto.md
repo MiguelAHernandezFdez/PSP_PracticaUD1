@@ -119,6 +119,27 @@ El trabajador valida su entrada aunque venga del coordinador.
 | 2                | Entrada incorrecta   |
 | 3                | Fallo simulado       |
 
+### Recogida de resultados: archivos temporales
+
+El resultado de cada trabajador se recoge en un archivo temporal propio
+y no leyendo su salida con un flujo.
+
+Motivo: el coordinador espera como máximo 3 segundos a cada trabajador.
+Leer un flujo con readAllBytes() bloquea hasta que el trabajador cierra su
+salida, así que un trabajador lento dejaría al coordinador parado y el límite
+de 3 segundos no se aplicaría. Con archivos, el waitFor con tiempo máximo
+manda y el archivo se lee después, solo si el trabajador terminó bien.
+
+Cómo se evita el bloqueo de los canales:
+
+| Canal            | Cómo se gestiona                                | Por qué no bloquea                                  |
+|------------------|-------------------------------------------------|-----------------------------------------------------|
+| Entrada estándar | El coordinador escribe una línea y cierra el canal | El trabajador recibe el fin de entrada y no espera más datos |
+| Salida estándar  | Redirigida a un archivo temporal                | No hay tubería que se pueda llenar                  |
+| Salida de error  | Hereda la consola del coordinador               | Tampoco hay tubería                                 |
+
+Hay que borrar los archivos al terminar, incluso si algo falla.
+Se hace en un bloque finally.
 
 ## 5. Modos de prueba y fallos
 
